@@ -13,6 +13,7 @@ namespace Sulu\Bundle\ArticleBundle\Content;
 
 use ONGR\ElasticsearchBundle\Service\Manager;
 use ONGR\ElasticsearchDSL\Query\Compound\BoolQuery;
+use ONGR\ElasticsearchDSL\Query\Joining\NestedQuery;
 use ONGR\ElasticsearchDSL\Query\MatchAllQuery;
 use ONGR\ElasticsearchDSL\Query\TermLevel\TermQuery;
 use ONGR\ElasticsearchDSL\Search;
@@ -150,6 +151,7 @@ class ArticleDataProvider implements DataProviderInterface, DataProviderAliasInt
         $pageSize = null
     ) {
         $filters['types'] = $this->getTypesProperty($propertyParameter);
+        $filters['structureTypes'] = $this->getStructureTypesProperty($propertyParameter);
         $filters['excluded'] = $this->getExcludedFilter($filters, $propertyParameter);
 
         $queryResult = $this->getSearchResult($filters, $limit, $page, $pageSize, $options['locale']);
@@ -177,6 +179,7 @@ class ArticleDataProvider implements DataProviderInterface, DataProviderAliasInt
         $pageSize = null
     ) {
         $filters['types'] = $this->getTypesProperty($propertyParameter);
+        $filters['structureTypes'] = $this->getStructureTypesProperty($propertyParameter);
         $filters['excluded'] = $this->getExcludedFilter($filters, $propertyParameter);
 
         $queryResult = $this->getSearchResult($filters, $limit, $page, $pageSize, $options['locale']);
@@ -294,6 +297,15 @@ class ArticleDataProvider implements DataProviderInterface, DataProviderAliasInt
             $search->addQuery($typesQuery);
         }
 
+        if (array_key_exists('structureTypes', $filters) && $filters['structureTypes']) {
+            $strTypesQuery = new BoolQuery();
+            foreach ($filters['structureTypes'] as $filter) {
+                $strTypesQuery->add(new TermQuery('structure_type', $filter), BoolQuery::SHOULD);
+            }
+            $search->addQuery($strTypesQuery);
+        }
+
+
         if (0 === $queriesCount) {
             $search->addQuery(new MatchAllQuery(), BoolQuery::MUST);
         } else {
@@ -323,6 +335,28 @@ class ArticleDataProvider implements DataProviderInterface, DataProviderAliasInt
         }
 
         return $filterTypes;
+    }
+
+    /**
+     * Returns array with all structure types (template keys) defined in property parameter.
+     *
+     * @param array $propertyParameter
+     *
+     * @return array
+     */
+    private function getStructureTypesProperty($propertyParameter)
+    {
+        $filterStrTypes = [];
+
+        if (array_key_exists('structureTypes', $propertyParameter)
+            && null !== ($types = explode(',', $propertyParameter['structureTypes']->getValue()))
+        ) {
+            foreach ($types as $type) {
+                $filterStrTypes[] = $type;
+            }
+        }
+
+        return $filterStrTypes;
     }
 
     /**
